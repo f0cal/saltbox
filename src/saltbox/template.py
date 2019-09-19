@@ -23,6 +23,9 @@ class RecipeTemplate(TemplateSync):
 
     def __init__(self, root_dir):
         self._root_dir = root_dir
+
+    @property
+    def jinja_env(self):
         j_env = jinja2.Environment(loader=jinja2.FileSystemLoader(self._root_dir))
         j_env.block_start_string = "((*"  # FIXME (br) this is unused
         j_env.block_end_string = "*))"  # FIXME (br)
@@ -30,11 +33,11 @@ class RecipeTemplate(TemplateSync):
         j_env.variable_end_string = "}$"
         j_env.comment_start_string = "((="  # FIXME (br)
         j_env.comment_end_string = "=))"  # FIXME (br)
-        self._jinja_env = j_env
+        return j_env
 
     def _render_one_inplace(self, possible_template, template_vars):
         env_path = os.path.relpath(possible_template, self._root_dir)
-        new_contents = self._jinja_env.get_template(env_path).render(**template_vars)
+        new_contents = self.jinja_env.get_template(env_path).render(**template_vars)
         with open(possible_template, "w") as rendered_template:
             rendered_template.write(new_contents)
 

@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import time
 
 import salt
 
@@ -47,6 +48,7 @@ LOG = logging.getLogger(__name__)
 
 class SaltDaemon:
     SIGHUP_SIGNAL = 2
+    STATUS_SIGNAL = 0
     CFG_FILENAME = None
     EXE = None
     PIDFILE = None
@@ -57,12 +59,15 @@ class SaltDaemon:
         self._config_obj = config_obj
         self._running = False
 
-    def start(self):
+    def start(self, daemon=True):
         if self.running:
             return
         _cfg = self._config_obj.salt_config_path
         # assert os.path.exists(os.path.join(_cfg, cls.CFG_FILENAME))
-        ret_code = subprocess.call([self.EXE, "--config-dir", _cfg, "--daemon"])
+        args = [self.EXE, "--config-dir", _cfg, "--log-level", "debug"]
+        if daemon:
+            args.append("--daemon")
+        ret_code = subprocess.call(args)
         assert ret_code == 0, ret_code
         self._running = True
 
@@ -72,6 +77,15 @@ class SaltDaemon:
         pid = self.pid
         assert pid is not None
         os.kill(pid, self.SIGHUP_SIGNAL)
+        self._running = False
+
+    def wait(self):
+        if not self.running:
+            return
+        pid = self.pid
+        assert pid is not None
+        while not os.kill(pid, self.STATUS_SIGNAL):
+            time.sleep(1)
         self._running = False
 
     @property
@@ -99,12 +113,12 @@ class SaltDaemon:
 
 class SaltMaster(SaltDaemon):
     EXE = "salt-master"
-    PIDFILE = "master.pid"
+    PIDFILE = "salt-master.pid"
 
 
 class SaltMinion(SaltDaemon):
     EXE = "salt-minion"
-    PIDFILE = "minion.pid"
+    PIDFILE = "salt-minion.pid"
 
 
 # config

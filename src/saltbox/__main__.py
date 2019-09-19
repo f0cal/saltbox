@@ -47,13 +47,25 @@ def _exec_args(parser):
 
 
 @cli_entrypoint(["exec"], args=_exec_args)
-def _salt_call(parser, exec_args, master, minion, log_level):
+def _exec(parser, exec_args, master, minion, log_level):
     logging_config(log_level)
     config = SaltBoxConfig.from_env(master=master, minion=minion)
     with SaltBox.executor_factory(config) as api:
         assert len(exec_args) > 1
         assert exec_args.pop(0) == "--"
         sys.exit(api.execute(*exec_args))
+
+
+def _refresh_args(parser):
+    pass
+
+
+@cli_entrypoint(["refresh"], args=_refresh_args)
+def _refresh(parser, log_level):
+    logging_config(log_level)
+    config = SaltBoxConfig.from_env()
+    with SaltBox.refresh_factory(config):
+        sys.exit()
 
         # salt_exe = exec_args.pop(0)
         # exec_args = " ".join(exec_args)

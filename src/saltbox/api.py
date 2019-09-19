@@ -101,17 +101,23 @@ class MinionFactory(Base):
     # CONFIG_FACTORY = SaltConfig
 
     def __init__(self, config_obj):
-        # config = self.CONFIG_FACTORY.from_root_dir(salt_root)
-        self._minion_svc = self.MINION_FACTORY.from_config(config_obj)
         super().__init__(config_obj)
+        self._minion_svc = self.MINION_FACTORY.from_config(config_obj)
+        self._block = hasattr(self._config_obj, "block") and getattr(
+            self._config_obj, "block"
+        )
 
     def __enter__(self, *args, **dargs):
         self._minion_svc.start()
         return super().__enter__(*args, **dargs)
 
     def __exit__(self, *args, **dargs):
-        self._minion_svc.kill()
-        return super().__exit__(*args, **dargs)
+        result = super().__exit__(*args, **dargs)
+        if self._block:
+            self._minion_svc.wait()
+        if self.running:
+            self._minion_svc.stop()
+        return result
 
 
 class MasterFactory(Base):
@@ -119,17 +125,23 @@ class MasterFactory(Base):
     # CONFIG_FACTORY = SaltConfig
 
     def __init__(self, config_obj, *args, **dargs):
-        # config = self.CONFIG_FACTORY.from_root_dir(config_obj)
-        self._master_svc = self.MASTER_FACTORY.from_config(config_obj)
         super().__init__(config_obj, *args, **dargs)
+        self._master_svc = self.MASTER_FACTORY.from_config(config_obj)
+        self._block = hasattr(self._config_obj, "block") and getattr(
+            self._config_obj, "block"
+        )
 
     def __enter__(self, *args, **dargs):
         self._master_svc.start()
         return super().__enter__(*args, **dargs)
 
     def __exit__(self, *args, **dargs):
-        self._master_svc.stop()
-        return super().__exit__(*args, **dargs)
+        result = super().__exit__(*args, **dargs)
+        if self._block:
+            self._master_svc.wait()
+        if self.running:
+            self._master_svc.stop()
+        return result
 
 
 class RegistryWriter(Base):
@@ -212,6 +224,7 @@ class TemplateRenderer(Base):
 
 class Executor(Base):
     def execute(self, *args, **dargs):
+        assert len(args) > 0
         LOG.debug(f"Executing {args}")
         args = list(args)
         exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
@@ -220,6 +233,16 @@ class Executor(Base):
 
 
 class SaltBox:
+    @staticmethod
+    def refresh_factory(config_obj):
+        bases = [TemplateRenderer]
+        if hasattr(config_obj, "master") and config_obj.master:
+            raise NotImplementedError()
+        if hasattr(config_obj, "minion") and config_obj.minion:
+            raise NotImplementedError()
+        factory = type("SaltBox", tuple(bases), {})
+        return factory(config_obj)
+
     @staticmethod
     def executor_factory(config_obj):
         bases = [Executor, TemplateRenderer]
@@ -253,7 +276,7 @@ class SaltBox:
 class SaltBoxConfig(types.SimpleNamespace):
     BOX_DEFAULT_REGISTRY_PATH = "etc/saltbox/registry.txt"
     SALT_DEFAULT_CONFIG_PATH = "etc/salt"
-    SALT_DEFAULT_RUN_PATH = "var/run/salt"
+    SALT_DEFAULT_RUN_PATH = "var/run"
     # def __init__(self, prefix):
     #     LOG.debug(prefix)
     #     self._prefix = prefix
