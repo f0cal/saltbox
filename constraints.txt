@@ -1,0 +1,1 @@
+-e git+https://github.com/f0cal/f0cal#egg=plugnparse&subdirectory=plugnparse
