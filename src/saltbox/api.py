@@ -18,6 +18,11 @@ RSYNC = shutil.which("rsync")
 LOG = logging.getLogger(__name__)
 
 
+def call(arg_list):
+    LOG.debug(f"RUN {arg_list}")
+    return subprocess.call(arg_list)
+
+
 def run(cmd_str):
     LOG.debug(f"RUN {cmd_str}")
     return subprocess.run(shlex.split(cmd_str)).returncode
@@ -115,7 +120,7 @@ class MinionFactory(Base):
         result = super().__exit__(*args, **dargs)
         if self._block:
             self._minion_svc.wait()
-        if self.running:
+        if self._minion_svc.running:
             self._minion_svc.stop()
         return result
 
@@ -139,7 +144,7 @@ class MasterFactory(Base):
         result = super().__exit__(*args, **dargs)
         if self._block:
             self._master_svc.wait()
-        if self.running:
+        if self._master_svc.running:
             self._master_svc.stop()
         return result
 
@@ -229,7 +234,8 @@ class Executor(Base):
         args = list(args)
         exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
         args = [exe, "--config-dir", self._config_obj.salt_config_path] + args
-        return run(" ".join(args))
+        # return run(" ".join(args))
+        return call(args)
 
 
 class SaltBox:
