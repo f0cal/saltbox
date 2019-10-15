@@ -19,7 +19,7 @@ LOG = logging.getLogger(__name__)
 
 
 def call(arg_list):
-    LOG.debug(f"RUN {arg_list}")
+    LOG.debug(f"CALL {arg_list}")
     return subprocess.call(arg_list)
 
 

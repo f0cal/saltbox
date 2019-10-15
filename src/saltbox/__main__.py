@@ -11,7 +11,8 @@ LOG = logging.getLogger(__name__)
 
 
 def logging_config(log_level):
-    logging.basicConfig(level=log_level)
+    if log_level is not None:
+        logging.basicConfig(level=log_level.upper())
 
 
 def _install_args(parser):
@@ -35,7 +36,7 @@ def _exec_args(parser):
 
 @cli_entrypoint(["exec"], args=_exec_args)
 def _exec(parser, exec_args, master, minion, log_level):
-    logging_config(log_level.upper())
+    logging_config(log_level)
     config = SaltBoxConfig.from_env(master=master, minion=minion)
     with SaltBox.executor_factory(config) as api:
         assert len(exec_args) > 1
