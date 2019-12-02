@@ -1,0 +1,3 @@
+root_dir: ${SALTROOT}$
+
+config_dir: ${SALTROOT}$/etc/salt
