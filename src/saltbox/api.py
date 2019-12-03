@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import logging
 import os
 import shlex
@@ -67,28 +68,6 @@ class Registry:
             for template_root in self._template_roots:
                 registry_file.write(f"{template_root}\n")
 
-    # @classmethod
-    # def _hash(cls, path_str):
-    #     hsh = hashlib.md5()
-    #     hsh.update(path_str.encode())
-    #     return hsh.hexdigest()
-
-    # @classmethod
-    # def _to_dir(cls, template_root, config_dir):
-    #     link_path = os.path.join(config_dir, cls._hash(template_root))
-    #     if not os.path.exists(link_path):
-    #         os.symlink(template_root, link_path)
-
-
-# class ServiceFactory():
-#     def __init__(self, config_path, *args, **dargs):
-#         self.__svc = self.__FACTORY(config_path)
-#         super().__init__(config_path, *args, **dargs)
-#     def __enter__(self, *args, **dargs):
-#         self.__svc.start()
-#     def __exit__(self, *args, **dargs):
-#         self.__svc.kill()
-
 
 class Base(contextlib.AbstractContextManager):
     def __init__(self, config_obj):
@@ -103,7 +82,6 @@ class Base(contextlib.AbstractContextManager):
 
 class MinionFactory(Base):
     MINION_FACTORY = SaltMinion
-    # CONFIG_FACTORY = SaltConfig
 
     def __init__(self, config_obj):
         super().__init__(config_obj)
@@ -151,9 +129,11 @@ class MasterFactory(Base):
 
 class RegistryWriter(Base):
     def __init__(self, config_obj):
+        self._registry = None
         super().__init__(config_obj)
 
     def add_package(self, package_dir):
+        assert self._registry is not None
         self._registry.append(package_dir)
 
     def _load(self):
@@ -171,31 +151,43 @@ class RegistryWriter(Base):
         self._registry = None
         return super().__exit__(*args, **dargs)
 
-    # @property
-    # def template_paths(self):
-    #     return self._template_paths
 
-    # @property
-    # def salt_config_path(self):
-    #     return os.path.join(self._dst_path, *self.DEFAULT_SALT_CONFIG)
+class Cache(Base):
+    def __init__(self, config_obj):
+        super().__init__(config_obj)
+        if not os.path.exists(self._config_obj.saltbox_cache_root):
+            os.makedirs(self._config_obj.saltbox_cache_root)
 
-    # @classmethod
-    # def _resolve_prefix(cls):
-    #     return sys.prefix # TODO (br): This only works if you're in a venv
+    def cache_dir(self, package_dir):
+        package_dir = os.path.abspath(package_dir)
+        hsh = hashlib.md5(package_dir.encode()).hexdigest()
+        cache_dir = os.path.join(
+            self._config_obj.saltbox_cache_root, hsh
+        )  # tempfile.mkdtemp(dir=self._config_obj.saltbox_cache_root)
+        return cache_dir
 
-    # @classmethod
-    # def create_config(cls, config_path):
-    #     assert not os.path.exists(config_path)
-    #     os.makedirs(os.path.dirname(config_path))
-    #     open(config_path, 'w').close()
+    def add_package(self, package_dir):
+        cache_dir = self.cache_dir(package_dir)
+        shutil.copytree(package_dir, cache_dir)
+        super().add_package(cache_dir)
+
+
+class BottomTemplate(Base):
+    HERE = os.path.dirname(__file__)
+
+    # def __init__(self, config_obj):
+    #     super().__init__(config_obj)
+
+    def add_package(self, package_dir):
+        super().add_package(self.bottom_template_path)
+        super().add_package(package_dir)
+
+    @property
+    def bottom_template_path(self):
+        return os.path.join(self.HERE, "template")
 
 
 class TemplateRenderer(Base):
-
-    # def __init__(self, *args, **dargs):
-    #     self._registry = None
-    #     super().__init__(*args, **dargs)
-
     @classmethod
     def render_all(cls, template_roots, salt_root):
         template_vars = dict(SALTROOT=salt_root)
@@ -230,6 +222,9 @@ class TemplateRenderer(Base):
 class Executor(Base):
     def execute(self, *args, **dargs):
         assert len(args) > 0
+        assert os.path.exists(
+            self._config_obj.salt_config_path
+        ), self._config_obj.salt_config_path
         LOG.debug(f"Executing {args}")
         args = list(args)
         exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
@@ -262,66 +257,23 @@ class SaltBox:
     @staticmethod
     def installer_factory(config_obj):
         bases = [RegistryWriter]
+        if config_obj.use_install_cache:
+            bases.insert(0, Cache)
+        if not os.path.exists(config_obj.salt_config_path):
+            bases.insert(0, BottomTemplate)
         factory = type("SaltBox", tuple(bases), {})
         return factory(config_obj)
-
-        # config_path = os.path.join(sys.prefix, *cls.DEFAULT_BOX_CONFIG)
-        # if not os.path.exists(config_path):
-        #     cls.create_config(config_path)
-        # dst_path = cls._resolve_prefix()
-        # bases = [cls]
-        # if minion:
-        #     bases.append(MinionFactory)
-        # if master:
-        #     bases.append(MasterFactory)
-        # print(bases)
-        # factory = type("SaltBox", tuple(bases), {})
-        # return factory(config_path, dst_path)
 
 
 class SaltBoxConfig(types.SimpleNamespace):
     BOX_DEFAULT_REGISTRY_PATH = "etc/saltbox/registry.txt"
+    BOX_DEFAULT_CACHE_PATH = "var/cache/saltbox"
     SALT_DEFAULT_CONFIG_PATH = "etc/salt"
     SALT_DEFAULT_RUN_PATH = "var/run"
-    # def __init__(self, prefix):
-    #     LOG.debug(prefix)
-    #     self._prefix = prefix
-    # self._minion_config = None
-    # self._master_config = None
 
-    # @property
-    # def _minion_config_path(self):
-    #     return os.path.join(self.config_dir, "minion")
-
-    # @property
-    # def _master_config_path(self):
-    #     os.path.join(self.config_dir, "master")
-
-    # @property
-    # def minion_opts(self):
-    #     if self._minion_config is None:
-    #         path = self._minion_config_path
-    #         assert os.path.exists(path), path
-    #         self._minion_config = salt.config.minion_config(path)
-    #     return self._minion_config
-
-    # @property
-    # def master_opts(self):
-    #     if self._master_config is None:
-    #         path = self._master_config_path
-    #         assert os.path.exists(path)
-    #         self._master_config = salt.config.master_config(path)
-    #     return self._minion_config
-
-    # @property
-    # def config_dir(self):
-    #     return os.path.join(self.prefix, "etc", "salt")
-
-    # @property
-    # def master_pid(self):
-    #     pid_file = os.path.join(self.prefix, "var", "run", "salt-master.pid")
-    #     assert os.path.exists(pid_file)
-    #     return int(open(pid_file).read())
+    @property
+    def saltbox_cache_root(self):
+        return os.path.join(self.prefix, self.BOX_DEFAULT_CACHE_PATH)
 
     @property
     def salt_root_path(self):
@@ -349,7 +301,6 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     def call_client(self):
         mopts = self.minion_opts
-        # assert 'file_client' in mopts and mopts['file_client'] == 'local'
         return salt.client.Caller(mopts=mopts)
 
     def cloud_client(self):
@@ -357,14 +308,3 @@ class SaltBoxConfig(types.SimpleNamespace):
         assert os.path.exists(cfg_path)
         opts = salt.config.cloud_config(path=cfg_path)
         return salt.cloud.CloudClient(opts=opts)
-
-    # @classmethod
-    # def from_root_dir(cls, root_dir):
-    #     return cls(root_dir, cleanup=False)
-
-    # @classmethod
-    # def from_config_dir(cls, config_dir):
-    #     config_dir, _ = os.path.split(config_dir)
-    #     assert _ == "salt", _
-    #     assert toekns.pop() == "etc"
-    #     return cls(os.path.join(tokens))
