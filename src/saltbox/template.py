@@ -37,7 +37,11 @@ class RecipeTemplate(TemplateSync):
 
     def _render_one_inplace(self, possible_template, template_vars):
         env_path = os.path.relpath(possible_template, self._root_dir)
-        new_contents = self.jinja_env.get_template(env_path).render(**template_vars)
+        try:
+            new_contents = self.jinja_env.get_template(env_path).render(**template_vars)
+        except Exception:
+            print(env_path)
+            raise
         with open(possible_template, "w") as rendered_template:
             rendered_template.write(new_contents)
 

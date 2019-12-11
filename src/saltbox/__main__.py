@@ -1,7 +1,5 @@
 import argparse
 import logging
-import shlex
-import subprocess
 import sys
 
 import plugnparse
@@ -9,33 +7,25 @@ import plugnparse
 from .api import SaltBox, SaltBoxConfig
 
 cli_entrypoint = plugnparse.entrypoint
-
-BIN_DIR = sys.exec_prefix
-# SALTROOT = os.path.join(sys.prefix, "var", "run", "saltbox")
-# RSYNC = shutil.which("rsync")
-# HERE = os.path.dirname(__file__)
-
 LOG = logging.getLogger(__name__)
 
 
 def logging_config(log_level):
-    logging.basicConfig(level=log_level)
-
-
-def run(cmd_str):
-    print(cmd_str)
-    subprocess.run(shlex.split(cmd_str))
+    if log_level is not None:
+        logging.basicConfig(level=log_level.upper())
 
 
 def _install_args(parser):
     parser.add_argument("package_dir")
+    parser.add_argument("-e", "--editable", default=False, action="store_true")
     # parser.add_argument("--base", default=os.path.join(HERE, "template"))
 
 
 @cli_entrypoint(["install"], args=_install_args)
-def _install(parser, package_dir, log_level, editable=True):
+def _install(parser, package_dir, log_level, editable=False):
     logging_config(log_level)
-    config = SaltBoxConfig.from_env()
+    use_install_cache = not editable
+    config = SaltBoxConfig.from_env(use_install_cache=use_install_cache)
     with SaltBox.installer_factory(config) as api:
         api.add_package(package_dir)
 
@@ -67,34 +57,6 @@ def _refresh(parser, log_level):
     with SaltBox.refresh_factory(config):
         sys.exit()
 
-        # salt_exe = exec_args.pop(0)
-        # exec_args = " ".join(exec_args)
-
-
-# def _salt_call_args(parser):
-#     parser.add_argument("args", nargs=argparse.REMAINDER)
-
-# @cli_entrypoint(["call"], args=_salt_call_args)
-# def _salt_call(parser, *args, **dargs):
-#     with SaltBox.from_env() as api:
-#         api.refresh()
-#         rest = " ".join(sys.argv[2:])
-#         run(f"{BIN_DIR}/bin/salt-call --config={api.salt_config_path} {rest}")
-
-# @cli_entrypoint(["run"], args=_salt_call_args)
-# def _salt_run(parser, *args, **dargs):
-#     with SaltBox.from_env() as api:
-#         api.refresh()
-#         rest = " ".join(sys.argv[2:])
-#         run(f"{BIN_DIR}/bin/salt-run --config={api.salt_config_path} {rest}")
-
-# @cli_entrypoint(["ssh"], args=_salt_call_args)
-# def _salt_ssh(parser, *args, **dargs):
-#     with SaltBox.from_env() as api:
-#         api.refresh()
-#         rest = " ".join(sys.argv[2:])
-#         run(f"{BIN_DIR}/bin/salt-ssh --config={api.salt_config_path} {rest}")
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -104,14 +66,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# @cli_entrypoint(["install"], args=_install_args)
-# def _install(parser, package_dir, base, editable=True):
-#     if not os.path.exists(SALTROOT):
-#         os.makedirs(SALTROOT)
-#     if package_dir.endswith("/"):
-#         package_dir = package_dir[:-1]
-#     t_vars = dict(SALTROOT=SALTROOT)
-#     with tempfile.TemporaryDirectory() as tmp_dir:
-#         RecipeTemplate.render_to_path(package_dir, tmp_dir, template_vars=t_vars)
-#         run(f"{RSYNC} -a {tmp_dir}/ {SALTROOT}")
