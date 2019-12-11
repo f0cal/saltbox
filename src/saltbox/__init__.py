@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pkg_resources import DistributionNotFound, get_distribution
 
+from . import utils  # noqa
 from .api import SaltBox, SaltBoxConfig  # noqa
 from . import utils
 try:
