@@ -204,6 +204,7 @@ class TemplateRenderer(Base):
 
     @classmethod
     def _merge(cls, tmp_dir, dst_root):
+        assert RSYNC is not None, "Salt box depends on rsync, please install via your system's package manager"
         run(f"{RSYNC} -a {tmp_dir}/ {dst_root}")
 
     @classmethod
