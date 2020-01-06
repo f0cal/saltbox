@@ -24,9 +24,9 @@ def call(arg_list):
     return subprocess.call(arg_list)
 
 
-def run(cmd_str):
-    LOG.debug(f"RUN {cmd_str}")
-    return subprocess.run(shlex.split(cmd_str)).returncode
+def run(arg_list, capture_output=False):
+    LOG.debug(f"RUN {arg_list}")
+    return subprocess.run(arg_list, capture_output=capture_output)
 
 
 class Registry:
@@ -205,7 +205,7 @@ class TemplateRenderer(Base):
     @classmethod
     def _merge(cls, tmp_dir, dst_root):
         assert RSYNC is not None, "Salt box depends on rsync, please install via your system's package manager"
-        run(f"{RSYNC} -a {tmp_dir}/ {dst_root}")
+        run(shlex.split(f"{RSYNC} -a {tmp_dir}/ {dst_root}"))
 
     @classmethod
     def _cache_path(cls):
@@ -221,7 +221,7 @@ class TemplateRenderer(Base):
 
 
 class Executor(Base):
-    def execute(self, *args, **dargs):
+    def _format_args(self, args):
         assert len(args) > 0
         assert os.path.exists(
             self._config_obj.salt_config_path
@@ -230,8 +230,16 @@ class Executor(Base):
         args = list(args)
         exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
         args = [exe, "--config-dir", self._config_obj.salt_config_path] + args
-        # return run(" ".join(args))
+        return args
+
+    def execute(self, *args, **dargs):
+        args = self._format_args(args)
         return call(args)
+
+    def run(self, *args, **dargs):
+        capture_output = dargs.pop('capture_output', False)
+        args = self._format_args(args)
+        return run(args, capture_output)
 
 
 class SaltBox:
