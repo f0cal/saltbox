@@ -76,7 +76,7 @@ class SaltDaemon:
             return
         pid = self.pid
         if pid is not None:
-            os.kill(pid, self.SIGHUP_SIGNAL)
+            subprocess.run(['killall', '-9', 'salt-master'])
         self._running = False
 
     def wait(self):
