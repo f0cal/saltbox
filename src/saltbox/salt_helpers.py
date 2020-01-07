@@ -47,7 +47,7 @@ LOG = logging.getLogger(__name__)
 
 
 class SaltDaemon:
-    SIGHUP_SIGNAL = 2
+    SIGHUP_SIGNAL = 9
     STATUS_SIGNAL = 0
     CFG_FILENAME = None
     EXE = None
