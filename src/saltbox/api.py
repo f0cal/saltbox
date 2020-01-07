@@ -26,7 +26,10 @@ def call(arg_list):
 
 def run(arg_list, capture_output=False):
     LOG.debug(f"RUN {arg_list}")
-    return subprocess.run(arg_list, capture_output=capture_output)
+    kwargs = {}
+    kwargs['stdout'] = subprocess.PIPE
+    kwargs['stderr'] = subprocess.PIPE
+    return subprocess.run(arg_list, **kwargs)
 
 
 class Registry:
