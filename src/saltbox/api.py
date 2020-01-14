@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import types
-
+from filelock import FileLock
 import salt
 
 from .salt_helpers import SaltMaster, SaltMinion
@@ -124,7 +124,7 @@ class MasterFactory(Base):
     def __exit__(self, *args, **dargs):
         result = super().__exit__(*args, **dargs)
         if self._block:
-            self._master_svc.wait()
+            self._master_svc.   wait()
         if self._master_svc.running:
             self._master_svc.stop()
         return result
@@ -208,7 +208,10 @@ class TemplateRenderer(Base):
     @classmethod
     def _merge(cls, tmp_dir, dst_root):
         assert RSYNC is not None, "Salt box depends on rsync, please install via your system's package manager"
-        run(shlex.split(f"{RSYNC} -a {tmp_dir}/ {dst_root}"))
+        lock = FileLock(os.path.join(dst_root, 'lock'))
+        with lock:
+            LOG.debug(f'Acquired lock {lock} running rsync')
+            run(shlex.split(f"{RSYNC} -a {tmp_dir}/ {dst_root}"))
 
     @classmethod
     def _cache_path(cls):
