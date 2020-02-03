@@ -211,7 +211,7 @@ class TemplateRenderer(Base):
         lock = FileLock(os.path.join(dst_root, 'lock'))
         with lock:
             LOG.debug(f'Acquired lock {lock} running rsync')
-            run(shlex.split(f"{RSYNC} -a {tmp_dir}/ {dst_root}"))
+            run(shlex.split(f"{RSYNC} -a --inplace {tmp_dir}/ {dst_root}"))
 
     @classmethod
     def _cache_path(cls):
