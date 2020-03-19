@@ -233,10 +233,11 @@ class Executor(Base):
             self._config_obj.salt_config_path
         ), self._config_obj.salt_config_path
         LOG.debug(f"Executing {args}")
-        args = list(args)
-        exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
-        args = [exe, "--config-dir", self._config_obj.salt_config_path] + args
-        return args
+        arg_list = list(args)
+        exe_list = [os.path.join(self._config_obj.bin_prefix, arg_list.pop(0))]
+        config_list = ["--config-dir", self._config_obj.salt_config_path]
+        log_list = ["--log-level", self._config_obj.salt_loglevel]
+        return exe_list + config_list + log_list + arg_list
 
     def execute(self, *args, **dargs):
         args = self._format_args(args)
@@ -287,12 +288,18 @@ class SaltBoxConfig(types.SimpleNamespace):
     SALT_DEFAULT_RUN_PATH = "var/run"
 
     @property
+    def use_install_cache(self):
+        if hasattr(self, "_use_install_cache"):
+            return self._use_install_cache
+        return False
+
+    @property
     def saltbox_cache_root(self):
-        return os.path.join(self.prefix, self.BOX_DEFAULT_CACHE_PATH)
+        return os.path.join(self._prefix, self.BOX_DEFAULT_CACHE_PATH)
 
     @property
     def salt_root_path(self):
-        return self.prefix
+        return self._prefix
 
     @property
     def salt_config_path(self):
@@ -304,15 +311,24 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     @property
     def bin_prefix(self):
-        return os.path.join(self.prefix, "bin")
+        if hasattr(self, "_bin_prefix"):
+            return self._bin_prefix
+        return os.path.join(self._prefix, "bin")
 
     @property
     def saltbox_registry_path(self):
-        return os.path.join(self.prefix, self.BOX_DEFAULT_REGISTRY_PATH)
+        return os.path.join(self._prefix, self.BOX_DEFAULT_REGISTRY_PATH)
+
+    @property
+    def salt_loglevel(self):
+        return "debug"
 
     @classmethod
     def from_env(cls, **dargs):
-        return cls(prefix=sys.prefix, **dargs)
+        prefix = dargs.pop('prefix', sys.prefix)
+        dargs['prefix'] = prefix
+        _dargs = {f"_{k}": v for k, v in dargs.items()}
+        return cls(**_dargs)
 
     def call_client(self):
         mopts = self.minion_opts
