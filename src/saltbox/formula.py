@@ -17,6 +17,13 @@ class Formula:
 
     def __init__(self, blob):
         self._blob = blob
+    def _verify_args(self, args_dict):
+        if set(self._blob['args']) > set(args_dict.keys()):
+            missing = set(self._blob['args']) - set(args_dict.keys())
+            raise TypeError(f"Missing the following arguments: {missing}")
+        elif set(self._blob['args']) < set(args_dict.keys()):
+            extra = set(args_dict.keys()) - set(self._blob['args'])
+            LOG.debug(f"Passed in extra arguments {extra} to formula")
 
     @property
     def config(self):
@@ -46,9 +53,9 @@ class Formula:
     def _runner(self):
         return shlex.split(self.runner)
 
-    def run(self, api, *run_args):
-        ns = self.parser.parse_args(run_args)
-        pillar = json.dumps(vars(ns))
+    def run(self, api, **run_args):
+        self._verify_args(run_args)
+        pillar = json.dumps(run_args)
         saltenv = self.saltenv
         return api.execute(*self._runner,
                            self.name,
@@ -110,9 +117,9 @@ def ___exec__(parser, log_level, path, formula, exec_args):
     logging_config(log_level)
     box = Box.from_path(path)
     assert formula in box.manifest.formulas, box.manifest.formulas
+    formula = box.manifest.formulas[formula]
+    ns = formula.parser.parse_args(exec_args)
     with tempfile.TemporaryDirectory() as tmp_dir:
-        print(tmp_dir)
-        formula = box.manifest.formulas[formula]
         config = SaltBoxConfig.from_env(prefix=tmp_dir,
                                         bin_prefix=os.path.join(sys.prefix, "bin"),
                                         use_install_cache=False,
@@ -121,5 +128,5 @@ def ___exec__(parser, log_level, path, formula, exec_args):
         with SaltBox.installer_factory(config) as api:
             api.add_package(path)
         with SaltBox.executor_factory(config) as api:
-            formula.run(api, *exec_args)
+            formula.run(api, **vars(ns))
         # os.system(f"tree {tmp_dir}")
