@@ -18,12 +18,10 @@ class Formula:
     def __init__(self, blob):
         self._blob = blob
     def _verify_args(self, args_dict):
-        if set(self._blob['args']) > set(args_dict.keys()):
-            missing = set(self._blob['args']) - set(args_dict.keys())
+        required_args = set([x['dest'] for x in self._blob['args'] if hasattr(x, 'required') and x['required']])
+        if required_args > set(args_dict.keys()):
+            missing = required_args - set(args_dict.keys())
             raise TypeError(f"Missing the following arguments: {missing}")
-        elif set(self._blob['args']) < set(args_dict.keys()):
-            extra = set(args_dict.keys()) - set(self._blob['args'])
-            LOG.debug(f"Passed in extra arguments {extra} to formula")
 
     @property
     def config(self):
