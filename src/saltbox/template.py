@@ -3,6 +3,7 @@ import glob
 import os
 
 import jinja2
+import warnings
 
 
 class TemplateSync:
@@ -29,8 +30,8 @@ class RecipeTemplate(TemplateSync):
         j_env = jinja2.Environment(loader=jinja2.FileSystemLoader(self._root_dir))
         j_env.block_start_string = "((*"  # FIXME (br) this is unused
         j_env.block_end_string = "*))"  # FIXME (br)
-        j_env.variable_start_string = "${"
-        j_env.variable_end_string = "}$"
+        j_env.variable_start_string = "{{$"
+        j_env.variable_end_string = "$}}"
         j_env.comment_start_string = "((="  # FIXME (br)
         j_env.comment_end_string = "=))"  # FIXME (br)
         return j_env
@@ -40,8 +41,8 @@ class RecipeTemplate(TemplateSync):
         try:
             new_contents = self.jinja_env.get_template(env_path).render(**template_vars)
         except Exception:
-            print(env_path)
-            raise
+            warnings.warn(f"JINJA rendering failed for {env_path}")
+            return
         with open(possible_template, "w") as rendered_template:
             rendered_template.write(new_contents)
 
