@@ -183,6 +183,7 @@ def ___exec__(parser, log_level, path, formula, exec_args):
     logging_config(log_level)
     box = Box.from_path(path)
     assert formula in box.manifest.formulas, box.manifest.formulas
+    retcode = 1
     with tempfile.TemporaryDirectory() as tmp_dir:
         formula = box.manifest.formulas[formula]
         config = SaltBoxConfig.from_env(prefix=tmp_dir,
@@ -193,4 +194,5 @@ def ___exec__(parser, log_level, path, formula, exec_args):
         with SaltBox.installer_factory(config) as api:
             api.add_package(path)
         with SaltBox.executor_factory(config) as api:
-            formula.run(api, *exec_args)
+            retcode = formula.run(api, *exec_args)
+    sys.exit(retcode)
