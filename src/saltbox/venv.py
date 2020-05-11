@@ -12,7 +12,8 @@ import types
 # import site
 import glob
 import functools
-import tabulate
+import rich.console
+import rich.table
 
 from .api import SaltBox, SaltBoxConfig
 from .formula import Box
@@ -70,15 +71,22 @@ class Venv:
 def _venv_list_args(parser):
     pass
 
+def _show_table(data, header):
+    console = rich.console.Console()
+    table = rich.table.Table(show_header=True)
+    [table.add_column(col_name) for col_name in header]
+    [table.add_row(*r) for r in data]
+    console.print(table)
+
 @cli_entrypoint(["venv", "list"], args=_venv_list_args)
 def _venv_list(parser, log_level):
     logging_config(log_level)
-    table = []
-    headers = ["Box", "Formula", "Description", "saltenv"]
+    table_data = []
+    header = ["Box", "Formula", "Description", "saltenv"]
     for box_name, box_obj in Venv.from_env().boxes.items():
         for formula_name, formula_obj in box_obj.manifest.formulas.items():
-            table.append((box_name, formula_name, formula_obj.descr, box_obj.name, ))
-    print(tabulate.tabulate(table, headers=headers))
+            table_data.append((box_name, formula_name, formula_obj.descr, box_obj.name, ))
+    _show_table(table_data, header)
 
 def _venv_exec_args(parser):
     parser.add_argument("box_name")
