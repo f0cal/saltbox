@@ -74,10 +74,11 @@ def _venv_list_args(parser):
 def _venv_list(parser, log_level):
     logging_config(log_level)
     table = []
+    headers = ["Box", "Formula", "Description", "saltenv"]
     for box_name, box_obj in Venv.from_env().boxes.items():
         for formula_name, formula_obj in box_obj.manifest.formulas.items():
-            table.append((box_name, box_obj.name, formula_name, formula_obj.descr))
-    print(tabulate.tabulate(table))
+            table.append((box_name, formula_name, formula_obj.descr, box_obj.name, ))
+    print(tabulate.tabulate(table, headers=headers))
 
 def _venv_exec_args(parser):
     parser.add_argument("box_name")
