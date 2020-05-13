@@ -83,8 +83,7 @@ class Formula:
         return api.execute(*self._runner,
                            self.name,
                            f"pillar={pillar}",
-                           f"saltenv={saltenv}",
-                           )
+                           f"saltenv={saltenv}")
 
     def _run_cmd(self, api, *run_args):
         ns = self.parser.parse_args(run_args)
@@ -113,6 +112,8 @@ class Formula:
                 args = [args]
             if "type" in kwargs:
                 kwargs["type"] = eval(kwargs["type"])
+            if "const" in kwargs:
+                kwargs["const"] = eval(kwargs["const"])
             parser.add_argument(*args, **kwargs)
         return parser
 
@@ -194,5 +195,4 @@ def ___exec__(parser, log_level, path, formula, exec_args):
         with SaltBox.installer_factory(config) as api:
             api.add_package(path)
         with SaltBox.executor_factory(config) as api:
-            retcode = formula.run(api, *exec_args)
-    sys.exit(retcode)
+            return formula.run(api, *exec_args)

@@ -289,9 +289,9 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     @property
     def use_install_cache(self):
-        if hasattr(self, "_use_install_cache"):
-            return self._use_install_cache
-        return False
+        return self._use_install_cache \
+            if hasattr(self, "_use_install_cache") \
+               else False
 
     @property
     def saltbox_cache_root(self):
@@ -311,9 +311,9 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     @property
     def bin_prefix(self):
-        if hasattr(self, "_bin_prefix"):
-            return self._bin_prefix
-        return os.path.join(self._prefix, "bin")
+        return self._bin_prefix \
+            if hasattr(self, "_bin_prefix") \
+               else os.path.join(self._prefix, "bin")
 
     @property
     def saltbox_registry_path(self):
@@ -321,7 +321,10 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     @property
     def salt_loglevel(self):
-        return "debug"
+        return self._log_level \
+            if hasattr(self, "_log_level") and \
+               self._log_level is not None \
+               else "quiet"
 
     @classmethod
     def from_env(cls, **dargs):

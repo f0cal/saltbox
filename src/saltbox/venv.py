@@ -14,6 +14,7 @@ import glob
 import functools
 import rich.console
 import rich.table
+import salt.log
 
 from .api import SaltBox, SaltBoxConfig
 from .formula import Box
@@ -22,8 +23,7 @@ cli_entrypoint = plugnparse.entrypoint
 LOG = logging.getLogger(__name__)
 
 def logging_config(log_level):
-    if log_level is not None:
-        logging.basicConfig(level=log_level.upper())
+    salt.log.setup_console_logger(log_level) if log_level else None
 
 class Venv:
     GLOB = "{path}/*/saltbox.yaml"
@@ -102,9 +102,10 @@ def _venv_exec(parser, log_level, box_name, formula_name, exec_args):
         formula = box.manifest.formulas[formula_name]
         config = SaltBoxConfig.from_env(prefix=sys.prefix,
                                         use_install_cache=False,
+                                        log_level=log_level,
                                         **formula.config
                                         )
         with SaltBox.installer_factory(config) as api:
             api.add_package(box.path)
         with SaltBox.executor_factory(config) as api:
-            formula.run(api, *exec_args)
+            return formula.run(api, *exec_args)

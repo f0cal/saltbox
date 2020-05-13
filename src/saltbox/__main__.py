@@ -4,16 +4,15 @@ import sys
 
 import plugnparse
 
-from .api import SaltBox, SaltBoxConfig
+# from .api import SaltBox, SaltBoxConfig
 
 cli_entrypoint = plugnparse.entrypoint
-LOG = logging.getLogger(__name__)
+# LOG = logging.getLogger(__name__)
 
 
-def logging_config(log_level):
-    if log_level is not None:
-        logging.basicConfig(level=log_level.upper())
-
+# def logging_config(log_level):
+#     if log_level is not None:
+#         logging.basicConfig(level=log_level.upper())
 
 # def _install_args(parser):
 #     parser.add_argument("package_dir")
@@ -61,8 +60,8 @@ def logging_config(log_level):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--log-level", default=None)
-    plugnparse.scan_and_run("saltbox", base_parser=parser)
+    return plugnparse.scan_and_run("saltbox", base_parser=parser)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
