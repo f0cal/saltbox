@@ -81,12 +81,21 @@ def _show_table(data, header):
 @cli_entrypoint(["venv", "list"], args=_venv_list_args)
 def _venv_list(parser, log_level):
     logging_config(log_level)
-    table_data = []
-    header = ["Box", "Formula", "Description", "saltenv"]
+
+    help_header = ["Syntax", "Description"]
+    help_table_data = [
+        ["saltbox venv exec <Box> <Formula-Name> -h", "List arguments"],
+        ["saltbox venv exec <Box> <Formula-Name> <positional-arguments> \
+        <optional-arguments>", "Run command"]
+    ]
+    _show_table(help_table_data, help_header)
+
+    box_table_data = []
+    box_header = ["Box", "Formula-Name", "Description", "saltenv"]
     for box_name, box_obj in Venv.from_env().boxes.items():
         for formula_name, formula_obj in box_obj.manifest.formulas.items():
-            table_data.append((box_name, formula_name, formula_obj.descr, box_obj.name, ))
-    _show_table(table_data, header)
+            box_table_data.append((box_name, formula_name, formula_obj.descr, box_obj.name, ))
+    _show_table(box_table_data, box_header)
 
 def _venv_exec_args(parser):
     parser.add_argument("box_name")
