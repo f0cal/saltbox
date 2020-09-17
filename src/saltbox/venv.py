@@ -96,10 +96,13 @@ def _venv_exec_args(parser):
 @cli_entrypoint(["venv", "exec"], args=_venv_exec_args)
 def _venv_exec(parser, log_level, box_name, formula_name, exec_args):
     LOG.info(f"venv exec {box_name}, {formula_name}, {exec_args}")
+    print(f"venv exec {box_name}, {formula_name}, {exec_args}")
     logging_config(log_level)
     LOG.critical(f"log level: {log_level}")
+    print(f"log level: {log_level}")
     box = Venv.from_env().boxes[box_name]
     LOG.info(f"box manifest: {box.manifest}, path: {box.path}, name: {box.name}")
+    print(f"box manifest: {box.manifest}, path: {box.path}, name: {box.name}")
     assert formula_name in box.manifest.formulas, box.manifest.formulas
     with tempfile.TemporaryDirectory() as tmp_dir:
         formula = box.manifest.formulas[formula_name]
