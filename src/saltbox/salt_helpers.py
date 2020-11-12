@@ -47,7 +47,7 @@ LOG = logging.getLogger(__name__)
 
 
 class SaltDaemon:
-    SIGHUP_SIGNAL = 2
+    SIGHUP_SIGNAL = 9
     STATUS_SIGNAL = 0
     CFG_FILENAME = None
     EXE = None
@@ -75,8 +75,8 @@ class SaltDaemon:
         if not self.running:
             return
         pid = self.pid
-        assert pid is not None
-        os.kill(pid, self.SIGHUP_SIGNAL)
+        if pid is not None:
+            subprocess.run(['killall', '-9', 'salt-master'])
         self._running = False
 
     def wait(self):
@@ -95,6 +95,8 @@ class SaltDaemon:
     @property
     def pid(self):
         pid_file_path = os.path.join(self._config_obj.salt_run_path, self.PIDFILE)
+        if not os.path.exists(pid_file_path):
+            return None
         return int(open(pid_file_path).read())
 
     # def __enter__(self):

@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import types
-
+from filelock import FileLock
 import salt
 
 from .salt_helpers import SaltMaster, SaltMinion
@@ -24,9 +24,12 @@ def call(arg_list):
     return subprocess.call(arg_list)
 
 
-def run(cmd_str):
-    LOG.debug(f"RUN {cmd_str}")
-    return subprocess.run(shlex.split(cmd_str)).returncode
+def run(arg_list, capture_output=False):
+    LOG.debug(f"RUN {arg_list}")
+    kwargs = {}
+    kwargs['stdout'] = subprocess.PIPE
+    kwargs['stderr'] = subprocess.PIPE
+    return subprocess.run(arg_list, **kwargs)
 
 
 class Registry:
@@ -121,7 +124,7 @@ class MasterFactory(Base):
     def __exit__(self, *args, **dargs):
         result = super().__exit__(*args, **dargs)
         if self._block:
-            self._master_svc.wait()
+            self._master_svc.   wait()
         if self._master_svc.running:
             self._master_svc.stop()
         return result
@@ -204,7 +207,11 @@ class TemplateRenderer(Base):
 
     @classmethod
     def _merge(cls, tmp_dir, dst_root):
-        run(f"{RSYNC} -a {tmp_dir}/ {dst_root}")
+        assert RSYNC is not None, "Salt box depends on rsync, please install via your system's package manager"
+        lock = FileLock(os.path.join(dst_root, 'lock'))
+        with lock:
+            LOG.debug(f'Acquired lock {lock} running rsync')
+            run(shlex.split(f"{RSYNC} -a --inplace {tmp_dir}/ {dst_root}"))
 
     @classmethod
     def _cache_path(cls):
@@ -220,17 +227,26 @@ class TemplateRenderer(Base):
 
 
 class Executor(Base):
-    def execute(self, *args, **dargs):
+    def _format_args(self, args):
         assert len(args) > 0
         assert os.path.exists(
             self._config_obj.salt_config_path
         ), self._config_obj.salt_config_path
         LOG.debug(f"Executing {args}")
-        args = list(args)
-        exe = os.path.join(self._config_obj.bin_prefix, args.pop(0))
-        args = [exe, "--config-dir", self._config_obj.salt_config_path] + args
-        # return run(" ".join(args))
+        arg_list = list(args)
+        exe_list = [os.path.join(self._config_obj.bin_prefix, arg_list.pop(0))]
+        config_list = ["--config-dir", self._config_obj.salt_config_path]
+        log_list = ["--log-level", self._config_obj.salt_loglevel]
+        return exe_list + config_list + log_list + arg_list
+
+    def execute(self, *args, **dargs):
+        args = self._format_args(args)
         return call(args)
+
+    def run(self, *args, **dargs):
+        capture_output = dargs.pop('capture_output', False)
+        args = self._format_args(args)
+        return run(args, capture_output)
 
 
 class SaltBox:
@@ -272,12 +288,18 @@ class SaltBoxConfig(types.SimpleNamespace):
     SALT_DEFAULT_RUN_PATH = "var/run"
 
     @property
+    def use_install_cache(self):
+        return self._use_install_cache \
+            if hasattr(self, "_use_install_cache") \
+               else False
+
+    @property
     def saltbox_cache_root(self):
-        return os.path.join(self.prefix, self.BOX_DEFAULT_CACHE_PATH)
+        return os.path.join(self._prefix, self.BOX_DEFAULT_CACHE_PATH)
 
     @property
     def salt_root_path(self):
-        return self.prefix
+        return self._prefix
 
     @property
     def salt_config_path(self):
@@ -289,15 +311,27 @@ class SaltBoxConfig(types.SimpleNamespace):
 
     @property
     def bin_prefix(self):
-        return os.path.join(self.prefix, "bin")
+        return self._bin_prefix \
+            if hasattr(self, "_bin_prefix") \
+               else os.path.join(self._prefix, "bin")
 
     @property
     def saltbox_registry_path(self):
-        return os.path.join(self.prefix, self.BOX_DEFAULT_REGISTRY_PATH)
+        return os.path.join(self._prefix, self.BOX_DEFAULT_REGISTRY_PATH)
+
+    @property
+    def salt_loglevel(self):
+        return self._log_level \
+            if hasattr(self, "_log_level") and \
+               self._log_level is not None \
+               else "quiet"
 
     @classmethod
     def from_env(cls, **dargs):
-        return cls(prefix=sys.prefix, **dargs)
+        prefix = dargs.pop('prefix', sys.prefix)
+        dargs['prefix'] = prefix
+        _dargs = {f"_{k}": v for k, v in dargs.items()}
+        return cls(**_dargs)
 
     def call_client(self):
         mopts = self.minion_opts
