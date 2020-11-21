@@ -1,42 +1,22 @@
-=======
-saltbox
-=======
+# saltbox
 
+*A sandboxing mechanism for [`salt`](https://github.com/saltstack/salt).*
 
-Saltbox is a thin wrapper around [salt](https://github.com/saltstack/salt "Salt github") that allows for salt to run in 
-non-privileged mode and contains all of salts files inside of a python virtual environment. 
+`salt` is an infrastructure-as-code (`yaml`+`jinja`) interpreter written in Python. One of the key challenges of working with `salt` is its "sprawl." It typically requires a superuser run-level and drops files all over the filesystem.
 
-Getting start
-====
-####Installation
-Saltbox is meant to be used with python virtual environments therefore it should always be installed in one: 
+"Sandboxing" is the practice of isolating software related to development so that the development environment doesn't affect system function, and vice-versa. `saltbox` uses Python's native `venv` ("virtual environment") mechanism to create a sandbox for `salt` where it can run unpriveleged and in isolation.
+
+In addition to sandboxing, `saltbox` provides some developer-friendly features like:
+* Makes `salt` "formulas" installable with `pip` so you can share them easily with other devs.
+* Venv-wide formula index, with a nice CLI so you can list all available formulas quickly.
+
+## Quick start
+
+```bash
+python3 -m venv ${VENV_DIR} 
+source ${VENV_DIR}/bin/activate
+git clone https://github.com/f0cal/saltbox && \
+  cd saltbox && \
+  pip install .
+saltbox --help
 ```
-python3 -m venv $VENV_DIR 
-source env/bin/activate
-git clone https://github.com/f0cal/saltbox.git
-cd saltbox 
-pip install .
-```
-
-#### Usage
-First point saltbox to your local file root:
- 
-`saltbox install $MY_SALT_DIR `
-
-$MY_SALT_DIR should contain any state or configuration file you may wish to use with the salt box installation.
-
-To start a master process using the local configuration use the `exec` command as follows: 
-
-`saltbox exec -- salt-master -d`
-
-Saltbox also provides an option to run the master only when needed by provided the `-m` option: 
-
-`saltbox -m exec -- salt '*' state.apply`
-
-If you also need a salt minion running use the `-n` option
-
-Note
-====
-
-This project has been set up using PyScaffold 3.2.1. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
