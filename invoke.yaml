@@ -1,0 +1,4 @@
+python.docker-build:
+  image:
+    start: python:3.7-slim
+    end: f0cal/saltbox:build
