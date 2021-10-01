@@ -26,10 +26,10 @@ def logging_config(log_level):
     salt.log.setup_console_logger(log_level) if log_level else None
 
 class Venv:
-    GLOB = "{path}/*/saltbox.yaml"
+    GLOB = "{path}/**/saltbox.yaml"
 
     def find_yaml(self, search_path):
-        return glob.glob(self.GLOB.format(path=search_path))
+        return glob.glob(self.GLOB.format(path=search_path), recursive=True)
 
     @classmethod
     def from_env(cls):
@@ -96,10 +96,18 @@ def _venv_exec_args(parser):
 @cli_entrypoint(["venv", "exec"], args=_venv_exec_args)
 def _venv_exec(parser, log_level, box_name, formula_name, exec_args):
     logging_config(log_level)
-    box = Venv.from_env().boxes[box_name]
-    assert formula_name in box.manifest.formulas, box.manifest.formulas
+    venv = Venv.from_env()
+    box = venv.boxes.get(box_name, None)
+    if box is None:
+        _boxes = list(venv.boxes.keys())
+        parser.error(f"{box_name} not available! Options are: {_boxes}")
+    # assert formula_name in box.manifest.formulas, box.manifest.formulas
+    formula = box.manifest.formulas.get(formula_name, None)
+    if box is None:
+        _formulas = list(box.manifest.formulas.keys())
+        parser.error(f"{formula_name} not available! Options are: {_formulas}")
     with tempfile.TemporaryDirectory() as tmp_dir:
-        formula = box.manifest.formulas[formula_name]
+        # formula = box.manifest.formulas[formula_name]
         config = SaltBoxConfig.from_env(prefix=sys.prefix,
                                         use_install_cache=False,
                                         log_level=log_level,
