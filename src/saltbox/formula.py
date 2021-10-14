@@ -126,7 +126,7 @@ class Manifest:
         assert os.path.exists(path), path
         assert os.path.isfile(path), path
         with open(path) as manifest_file:
-            return cls(yaml.load(manifest_file))
+            return cls(yaml.safe_load(manifest_file))
 
     @property
     def formulas(self):
