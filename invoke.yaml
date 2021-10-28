@@ -2,3 +2,28 @@ python.docker-build:
   image:
     start: python:3.7-slim
     end: f0cal/saltbox:build
+
+make-like:
+
+  # include:
+  #   - scripts
+
+  define:
+    
+    saltbox/sanity.check:
+      inv: sanity.check
+
+    saltbox/python.push:
+      inv: python.docker-push
+      depends:
+        - deployment/sanity.check
+
+    saltbox/python.editable:
+      cmd: pip install -e ./ -r ./requirements.txt
+      depends:
+        - plugnparse/python.editable
+
+    saltbox/utest:
+      inv: python.docker-test
+      depends:
+        - plugnparse/python.push
